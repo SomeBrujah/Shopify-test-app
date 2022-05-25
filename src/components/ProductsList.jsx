@@ -8,7 +8,6 @@ import {
   Filters,
   ChoiceList,
   TextField,
-  ButtonGroup,
   Button,
   Page
 } from "@shopify/polaris";
@@ -46,8 +45,8 @@ export function ProductsList() {
   const [queryValue, setQueryValue] = useState(null);
 
   useEffect(() => {
-    console.log(currentParams);
-    queryRequest(5, getParam("last"), getParam("after"), getParam("before"), getParam("reverse") === "true", getParam("sortKey"), getParam("title"), getParam("tag"));
+    console.log(getParam("sortKey"));
+    queryRequest(getParam("first"), getParam("last"), getParam("after"), getParam("before"), getParam("reverse") === "true", getParam("sortKey"), getParam("title"), getParam("tag"));
   }, [searchParams]);
 
   // Handle for products PAGINATION
@@ -58,7 +57,6 @@ export function ProductsList() {
     currentParams.after = '';
     currentParams.before = cursor;
     setSearchParams({ ...currentParams, last: 5, before: cursor, after: '', first: '' })
-    getSomeData({ variables: { last: 5, before: cursor, reverse: getParam("reverse") === "true", sortKey: getParam("sortKey") } });
   }, [data, currentParams]);
 
   const getNextPageProducts = useCallback((data) => {
@@ -68,7 +66,6 @@ export function ProductsList() {
     currentParams.after = cursor;
     currentParams.before = '';
     setSearchParams({ ...currentParams, first: 5, after: cursor, before: '', last: '' })
-    getSomeData({ variables: { first: 5, after: cursor, reverse: getParam("reverse") === "true", sortKey: getParam("sortKey") } });
   }, [data, currentParams]);
 
   // Sort by Newest OR Oldest
@@ -270,7 +267,7 @@ export function ProductsList() {
   }
 
   // Handle for change filters value
-  function queryRequest(first = 5, last, after, before, reverse, sortKey, title, tag) {
+  function queryRequest(first, last, after, before, reverse, sortKey, title, tag) {
     if (!first && !last) {
       console.log('Fetched');
       getSomeData({ variables: { first: 5, last: null, after: null, reverse: reverse, sortKey: sortKey, query: null } })
@@ -284,17 +281,17 @@ export function ProductsList() {
 
       case (title && !tag):
         console.log("Title only");
-        getSomeData({ variables: { first: first, last: last, after: after, reverse: reverse, sortKey: sortKey, query: `title:${title}*` } })
+        getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `title:${title}*` } })
         break;
 
       case (tag && !title):
         console.log("Tag only");
-        getSomeData({ variables: { first: first, last: last, after: after, reverse: reverse, sortKey: sortKey, query: `tag:${tag}*` } })
+        getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `tag:${tag}*` } })
         break;
 
       default:
         console.log("Title and tag are empty");
-        getSomeData({ variables: { first: first, last: last, after: after, reverse: reverse, sortKey: sortKey, query: null } })
+        getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: null } })
         break;
     }
   }
@@ -309,8 +306,8 @@ export function ProductsList() {
     const urlQueryObject = Object.fromEntries([...searchParams]);
     if (urlQueryObject.hasOwnProperty(param)) {
       if (param === "first" || param === "last") {
-        if (param) {
-          return parseInt(param);
+        if (urlQueryObject[param]) {
+          return parseInt(urlQueryObject[param]);
         } else {
           return null;
         }

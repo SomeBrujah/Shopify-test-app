@@ -15,6 +15,9 @@ const TOP_LEVEL_OAUTH_COOKIE = "shopify_top_level_oauth";
 
 const PORT = parseInt(process.env.PORT || "8081", 10);
 const isTest = process.env.NODE_ENV === "test" || !!process.env.VITE_TEST_BUILD;
+// import RedisStore from './redisStorage.js';
+// const sessionStorage = new RedisStore();
+import { storeCallback, loadCallback, deleteCallback } from './database.js';
 
 Shopify.Context.initialize({
   API_KEY: process.env.SHOPIFY_API_KEY,
@@ -24,7 +27,17 @@ Shopify.Context.initialize({
   API_VERSION: ApiVersion.April22,
   IS_EMBEDDED_APP: true,
   // This should be replaced with your preferred storage strategy
-  SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
+  // SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
+  SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
+    storeCallback,
+    loadCallback,
+    deleteCallback
+  )
+  // SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
+  //   sessionStorage.storeCallback.bind(sessionStorage),
+  //   sessionStorage.loadCallback.bind(sessionStorage),
+  //   sessionStorage.deleteCallback.bind(sessionStorage),
+  // ),
 });
 
 // Storing the currently active shops in memory will force them to re-login when your server restarts. You should
@@ -34,6 +47,7 @@ Shopify.Webhooks.Registry.addHandler("APP_UNINSTALLED", {
   path: "/webhooks",
   // @ts-ignore
   webhookHandler: async (topic, shop, body) => {
+    // Here shop is deleted or change his status
     delete ACTIVE_SHOPIFY_SHOPS[shop];
   },
 });
@@ -88,6 +102,7 @@ export async function createServer(
       res.status(500).send(error);
     }
   });
+
   app.post("/graphql", verifyRequest(app), async (req, res) => {
     try {
       const response = await Shopify.Utils.graphqlProxy(req, res);
@@ -114,7 +129,6 @@ export async function createServer(
 
   app.use("/*", (req, res, next) => {
     const { shop } = req.query;
-
     // Detect whether we need to reinstall the app, any request from Shopify will
     // include a shop in the query parameters.
     // @ts-ignore

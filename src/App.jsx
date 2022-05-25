@@ -39,6 +39,7 @@ export default function App() {
               <Route path="/products" element={<ProductsList />} />
               <Route path="/products/:id" element={<ProductsItem />} />
               <Route path="/create" element={<CreateProduct />} />
+              <Route path='/*' element={<ProductsList />}></Route>
             </Routes>
           </MyProvider>
         </AppBridgeProvider>
@@ -49,6 +50,18 @@ export default function App() {
 
 function MyProvider({ children }) {
   const app = useAppBridge();
+  window.app = app;
+  const defaultOptions = {
+    watchQuery: {
+      fetchPolicy: 'no-cache',
+      errorPolicy: 'ignore',
+    },
+    query: {
+      fetchPolicy: 'no-cache',
+      errorPolicy: 'all',
+    }
+  }
+
 
   const client = new ApolloClient({
     cache: new InMemoryCache(),
@@ -56,6 +69,7 @@ function MyProvider({ children }) {
       credentials: "include",
       fetch: userLoggedInFetch(app),
     }),
+    defaultOptions
   });
 
   return <ApolloProvider client={client}>{children}</ApolloProvider>;
@@ -75,7 +89,7 @@ export function userLoggedInFetch(app) {
       );
 
       const redirect = Redirect.create(app);
-      redirect.dispatch(Redirect.Action.APP, authUrlHeader || `/auth`);
+      redirect.dispatch(Redirect.Action.REMOTE, authUrlHeader || `/auth`);
       return null;
     }
 

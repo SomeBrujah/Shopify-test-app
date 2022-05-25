@@ -1,10 +1,8 @@
 export default function topLevelAuthRedirect({
   apiKey,
-  hostName,
   host,
-  query,
+  redirectUrl,
 }) {
-  const serializedQuery = new URLSearchParams(query).toString();
   return `<!DOCTYPE html>
 <html>
   <head>
@@ -12,7 +10,7 @@ export default function topLevelAuthRedirect({
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         if (window.top === window.self) {
-          window.location.href = '/auth?${serializedQuery}';
+          window.location.href = '${redirectUrl}';
         } else {
           var AppBridge = window['app-bridge'];
           var createApp = AppBridge.default;
@@ -27,7 +25,7 @@ export default function topLevelAuthRedirect({
 
           redirect.dispatch(
             Redirect.Action.REMOTE,
-            'https://${hostName}/auth/toplevel?${serializedQuery}',
+            '${redirectUrl}',
           );
         }
       });

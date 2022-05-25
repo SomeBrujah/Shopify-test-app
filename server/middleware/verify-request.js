@@ -69,7 +69,7 @@ export default function verifyRequest(app, { returnHeader = true } = {}) {
       res.header("X-Shopify-API-Request-Failure-Reauthorize", "1");
       res.header(
         "X-Shopify-API-Request-Failure-Reauthorize-Url",
-        `/auth?shop=${shop}`
+        `${process.env.HOST}/auth?shop=${shop}`
       );
       res.end();
     } else {
