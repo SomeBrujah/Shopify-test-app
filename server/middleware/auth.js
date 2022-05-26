@@ -1,4 +1,5 @@
 import { Shopify } from "@shopify/shopify-api";
+import { ActiveShopModel } from "../mongoModels/activShop.js";
 
 import topLevelAuthRedirect from "../helpers/top-level-auth-redirect.js";
 
@@ -18,7 +19,6 @@ export default function applyAuthMiddleware(app) {
     res.send(
       topLevelAuthRedirect({
         apiKey: Shopify.Context.API_KEY,
-        hostName: Shopify.Context.HOST_NAME,
         host: req.query.host,
         redirectUrl: redirectUrl,
       })
@@ -34,13 +34,15 @@ export default function applyAuthMiddleware(app) {
         req.query
       );
 
-      app.set(
-        "active-shopify-shops",
-        Object.assign(app.get("active-shopify-shops"), {
-          [session.shop]: session.scope,
-        })
-      );
-
+      await ActiveShopModel.updateOne({ shop: session.shop }, {
+        shop: session.shop,
+        scope: session.scope
+      },
+        {
+          upsert: true,
+          setDefaultsOnInsert: true
+        });
+      
       const response = await Shopify.Webhooks.Registry.register({
         shop: session.shop,
         accessToken: session.accessToken,
@@ -54,8 +56,6 @@ export default function applyAuthMiddleware(app) {
         );
       }
 
-      // Redirect to app with shop parameter upon auth
-      // res.redirect(`/?shop=${session.shop}&host=${host}`);
       res.redirect(`https://${session.shop}/admin/apps/${process.env.SHOPIFY_API_KEY}`);
     } catch (e) {
       switch (true) {
@@ -65,7 +65,6 @@ export default function applyAuthMiddleware(app) {
           break;
         case e instanceof Shopify.Errors.CookieNotFound:
         case e instanceof Shopify.Errors.SessionNotFound:
-          // This is likely because the OAuth session cookie expired before the merchant approved the request
           res.redirect(`/auth?shop=${req.query.shop}`);
           break;
         default:

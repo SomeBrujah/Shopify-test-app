@@ -18,13 +18,11 @@ export default function verifyRequest(app, { returnHeader = true } = {}) {
     let shop = req.query.shop;
 
     if (session && shop && session.shop !== shop) {
-      // The current request is for a different shop. Redirect gracefully.
       return res.redirect(`/auth?shop=${shop}`);
     }
 
     if (session?.isActive()) {
       try {
-        // make a request to make sure oauth has succeeded, retry otherwise
         const client = new Shopify.Clients.Graphql(
           session.shop,
           session.accessToken
@@ -36,7 +34,6 @@ export default function verifyRequest(app, { returnHeader = true } = {}) {
           e instanceof Shopify.Errors.HttpResponseError &&
           e.response.code === 401
         ) {
-          // We only want to catch 401s here, anything else should bubble up
         } else {
           throw e;
         }

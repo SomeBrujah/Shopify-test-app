@@ -19,7 +19,6 @@ export const Dashboard = ({
     getPublishedCountProduct,
     getCreadtedAfter16MayCountProduct
 }) => {
-    // Use location
     const location = useLocation();
     const navigate = useNavigate();
     useRoutePropagation(location);

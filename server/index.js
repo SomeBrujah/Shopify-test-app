@@ -6,7 +6,9 @@ import cookieParser from "cookie-parser";
 import { Shopify, ApiVersion } from "@shopify/shopify-api";
 import "dotenv/config";
 import axios from "axios";
+import mongoose from "mongoose";
 
+import { ActiveShopModel } from "./mongoModels/activShop.js";
 import applyAuthMiddleware from "./middleware/auth.js";
 import verifyRequest from "./middleware/verify-request.js";
 
@@ -15,9 +17,9 @@ const TOP_LEVEL_OAUTH_COOKIE = "shopify_top_level_oauth";
 
 const PORT = parseInt(process.env.PORT || "8081", 10);
 const isTest = process.env.NODE_ENV === "test" || !!process.env.VITE_TEST_BUILD;
-// import RedisStore from './redisStorage.js';
-// const sessionStorage = new RedisStore();
-import { storeCallback, loadCallback, deleteCallback } from './database.js';
+import MongoStore from "./mongoDBStorage.js";
+const sessionStorageMongo = new MongoStore();
+
 
 Shopify.Context.initialize({
   API_KEY: process.env.SHOPIFY_API_KEY,
@@ -26,40 +28,26 @@ Shopify.Context.initialize({
   HOST_NAME: process.env.HOST.replace(/https:\/\//, ""),
   API_VERSION: ApiVersion.April22,
   IS_EMBEDDED_APP: true,
-  // This should be replaced with your preferred storage strategy
-  // SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
   SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
-    storeCallback,
-    loadCallback,
-    deleteCallback
-  )
-  // SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
-  //   sessionStorage.storeCallback.bind(sessionStorage),
-  //   sessionStorage.loadCallback.bind(sessionStorage),
-  //   sessionStorage.deleteCallback.bind(sessionStorage),
-  // ),
+    sessionStorageMongo.storeCallback.bind(sessionStorageMongo),
+    sessionStorageMongo.loadCallback.bind(sessionStorageMongo),
+    sessionStorageMongo.deleteCallback.bind(sessionStorageMongo),
+  ),
 });
 
-// Storing the currently active shops in memory will force them to re-login when your server restarts. You should
-// persist this object in your app.
-const ACTIVE_SHOPIFY_SHOPS = {};
 Shopify.Webhooks.Registry.addHandler("APP_UNINSTALLED", {
   path: "/webhooks",
-  // @ts-ignore
   webhookHandler: async (topic, shop, body) => {
-    // Here shop is deleted or change his status
-    delete ACTIVE_SHOPIFY_SHOPS[shop];
+    await ActiveShopModel.deleteOne({ shop });;
   },
 });
 
-// export for test use only
-export async function createServer(
+async function createServer(
   root = process.cwd(),
   isProd = process.env.NODE_ENV === "production"
 ) {
   const app = express();
   app.set("top-level-oauth-cookie", TOP_LEVEL_OAUTH_COOKIE);
-  app.set("active-shopify-shops", ACTIVE_SHOPIFY_SHOPS);
   app.set("use-online-tokens", USE_ONLINE_TOKENS);
 
   app.use(cookieParser(Shopify.Context.API_SECRET_KEY));
@@ -127,12 +115,9 @@ export async function createServer(
     next();
   });
 
-  app.use("/*", (req, res, next) => {
+  app.use("/*", async (req, res, next) => {
     const { shop } = req.query;
-    // Detect whether we need to reinstall the app, any request from Shopify will
-    // include a shop in the query parameters.
-    // @ts-ignore
-    if (app.get("active-shopify-shops")[shop] === undefined && shop) {
+    if (await ActiveShopModel.findOne({ shop }) === null && shop) {
       // @ts-ignore
       res.redirect(`/auth?${new URLSearchParams(req.query).toString()}`);
     } else {
@@ -174,7 +159,6 @@ export async function createServer(
     app.use(serveStatic(resolve("dist/client")));
     // @ts-ignore
     app.use("/*", (req, res, next) => {
-      // Client-side routing will pick up on the correct route to render, so we always render the index here
       res
         .status(200)
         .set("Content-Type", "text/html")

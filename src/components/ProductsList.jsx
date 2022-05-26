@@ -28,7 +28,6 @@ export function ProductsList() {
     fetchPolicy: "no-cache"
   });
 
-  // Use location
   const location = useLocation();
   const navigate = useNavigate();
   useRoutePropagation(location);
@@ -40,16 +39,14 @@ export function ProductsList() {
 
   const currentParams = useMemo(() => Object.fromEntries([...searchParams]), [searchParams]);
 
-  // Our filters value
   const [taggedWith, setTaggedWith] = useState(null);
   const [queryValue, setQueryValue] = useState(null);
 
   useEffect(() => {
-    console.log(getParam("sortKey"));
     queryRequest(getParam("first"), getParam("last"), getParam("after"), getParam("before"), getParam("reverse") === "true", getParam("sortKey"), getParam("title"), getParam("tag"));
   }, [searchParams]);
 
-  // Handle for products PAGINATION
+  // Handler for products PAGINATION
   const getPrevPageProducts = useCallback((data) => {
     const cursor = data.products.edges[0].cursor;
     currentParams.first = '';
@@ -77,8 +74,14 @@ export function ProductsList() {
   // Sort by Alphabet or Price
   const handleSortTypeChange = useCallback((value) => {
     const sortTypeString = value[0];
-    currentParams.sortKey = sortTypeString;
-    setSearchParams({ ...currentParams, sortKey: sortTypeString })
+    if (getParam("reverse") === null) {
+      currentParams.reverse = 'false';
+    }
+      currentParams.after = '';
+      currentParams.before = '';
+      currentParams.first = 5
+      currentParams.sortKey = sortTypeString;
+    setSearchParams({ ...currentParams, first: 5, before: '', after: '', sortKey: sortTypeString, reverse: currentParams.reverse });
   }, [currentParams]);
 
   // Filter by tags
@@ -127,7 +130,6 @@ export function ProductsList() {
     handleTaggedWithRemove,
   ]);
 
-  // FILTER part START---------------------------------------------------------------------------------------------------------
   const filters = [
     {
       key: "taggedWith",
@@ -179,7 +181,6 @@ export function ProductsList() {
       onRemove: handleTaggedWithRemove,
     });
   }
-  // FILTER part END-----------------------------------------------------------------------------------------------------------
 
   if (error) {
     return <ErrorBannerComponent error={error} />
@@ -210,11 +211,9 @@ export function ProductsList() {
           ]}
           onSortChange={handleSortValueChange}
           resourceName={{ singular: "customer", plural: "customers" }}
-          items={loading || !data
-            ? previousData ? previousData.products.edges.map((el) => { return el.node }) : []
-            : data.products.edges.map((el) => { return el.node })}
+          items={data ? data.products.edges : previousData.products.edges}
           renderItem={(item) => {
-            const { id, title } = item;
+            const {node: {id, title}} = item;
             const media = <Avatar customer size="medium" name={title} />;
             return (
               <ResourceItem
@@ -241,7 +240,7 @@ export function ProductsList() {
           />
         </Card>
         <Card sectioned>
-          <Button fullWidth primary onClick={()=>{navigate('/create')}}>Add new product</Button>
+          <Button fullWidth primary onClick={() => { navigate('/create') }}>Add new product</Button>
         </Card>
       </Card>
     </Page>
@@ -266,31 +265,26 @@ export function ProductsList() {
     }
   }
 
-  // Handle for change filters value
+  // Handler for change filters value
   function queryRequest(first, last, after, before, reverse, sortKey, title, tag) {
     if (!first && !last) {
-      console.log('Fetched');
       getSomeData({ variables: { first: 5, last: null, after: null, reverse: reverse, sortKey: sortKey, query: null } })
       return
     }
     switch (true) {
       case (title && tag):
-        console.log("Title and tag are exist");
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `(title:${title}*) AND (tag:${tag})` } })
         break;
 
       case (title && !tag):
-        console.log("Title only");
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `title:${title}*` } })
         break;
 
       case (tag && !title):
-        console.log("Tag only");
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `tag:${tag}*` } })
         break;
 
       default:
-        console.log("Title and tag are empty");
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: null } })
         break;
     }
@@ -313,7 +307,7 @@ export function ProductsList() {
         }
       }
       if (param === "reverse" && urlQueryObject[param] === "") {
-        return false;
+        return null;
       }
       if (urlQueryObject[param] === "") {
         return null;
