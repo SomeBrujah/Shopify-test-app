@@ -28,7 +28,7 @@ export default function App() {
         <AppBridgeProvider
           config={{
             apiKey: process.env.SHOPIFY_API_KEY,
-            host: (new URL(location).searchParams.get("host")).toString("base64"),
+            host: new URL(location).searchParams.get("host"),
             forceRedirect: true,
           }}
         >

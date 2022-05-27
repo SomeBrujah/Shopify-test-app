@@ -39,8 +39,8 @@ export function ProductsList() {
 
   const currentParams = useMemo(() => Object.fromEntries([...searchParams]), [searchParams]);
 
-  const [taggedWith, setTaggedWith] = useState(null);
-  const [queryValue, setQueryValue] = useState(null);
+  const [taggedWith, setTaggedWith] = useState(getParam('tag'));
+  const [queryValue, setQueryValue] = useState(getParam('title'));
 
   useEffect(() => {
     queryRequest(getParam("first"), getParam("last"), getParam("after"), getParam("before"), getParam("reverse") === "true", getParam("sortKey"), getParam("title"), getParam("tag"));
@@ -77,10 +77,10 @@ export function ProductsList() {
     if (getParam("reverse") === null) {
       currentParams.reverse = 'false';
     }
-      currentParams.after = '';
-      currentParams.before = '';
-      currentParams.first = 5
-      currentParams.sortKey = sortTypeString;
+    currentParams.after = '';
+    currentParams.before = '';
+    currentParams.first = 5
+    currentParams.sortKey = sortTypeString;
     setSearchParams({ ...currentParams, first: 5, before: '', after: '', sortKey: sortTypeString, reverse: currentParams.reverse });
   }, [currentParams]);
 
@@ -92,7 +92,8 @@ export function ProductsList() {
       currentParams.tag = value;
       currentParams.before = '';
       currentParams.after = '';
-      setSearchParams({ ...currentParams, tag: value, before: '', after: '' });
+      currentParams.first = 5;
+      setSearchParams({ ...currentParams, first: 5, tag: value, before: '', after: '' });
     }, 1000)
   }, [currentParams]);
 
@@ -104,7 +105,8 @@ export function ProductsList() {
       currentParams.title = value;
       currentParams.before = '';
       currentParams.after = '';
-      setSearchParams({ ...currentParams, title: value, before: '', after: '' });
+      currentParams.first = 5;
+      setSearchParams({ ...currentParams, first: 5, title: value, before: '', after: ''});
     }, 1000)
   }, [currentParams]);
 
@@ -112,10 +114,12 @@ export function ProductsList() {
   const handleSortTypeRemove = useCallback(() => setSearchParams({ ...currentParams, sortKey: '' }), []);
   const handleTaggedWithRemove = useCallback(() => {
     setTaggedWith('')
+    currentParams.tag = '';
     setSearchParams({ ...currentParams, tag: '' })
   }, []);
   const handleQueryValueRemove = useCallback(() => {
     setQueryValue('');
+    currentParams.title = '';
     setSearchParams({ ...currentParams, title: '' })
   }, []);
 
@@ -154,7 +158,6 @@ export function ProductsList() {
           titleHidden
           choices={[
             { label: "Alphabet", value: "TITLE" },
-            { label: "Price", value: "PRICE" }
           ]}
           selected={getParam("sortKey") || []}
           onChange={handleSortTypeChange}
@@ -213,7 +216,7 @@ export function ProductsList() {
           resourceName={{ singular: "customer", plural: "customers" }}
           items={data ? data.products.edges : previousData.products.edges}
           renderItem={(item) => {
-            const {node: {id, title}} = item;
+            const { node: { id, title } } = item;
             const media = <Avatar customer size="medium" name={title} />;
             return (
               <ResourceItem
@@ -267,24 +270,31 @@ export function ProductsList() {
 
   // Handler for change filters value
   function queryRequest(first, last, after, before, reverse, sortKey, title, tag) {
+    console.log(`First: ${first}, Last: ${last}, After: ${after}, Before: ${before}, Reverse: ${reverse}, SortKey: ${sortKey}, Title: ${title}, Tag: ${tag}`);
     if (!first && !last) {
+      console.log('First and last parameter doesn\'t exist.');
       getSomeData({ variables: { first: 5, last: null, after: null, reverse: reverse, sortKey: sortKey, query: null } })
       return
     }
+    
     switch (true) {
-      case (title && tag):
+      case (title !== null && tag !== null):
+        console.log('Title and tag exist.');
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `(title:${title}*) AND (tag:${tag})` } })
         break;
 
       case (title && !tag):
+        console.log(`Only title exist.`);
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `title:${title}*` } })
         break;
 
       case (tag && !title):
+        console.log('Only tag exist.');
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: `tag:${tag}*` } })
         break;
 
       default:
+        console.log('Field tag and title is empty.');
         getSomeData({ variables: { first: first, last: last, after: after, before: before, reverse: reverse, sortKey: sortKey, query: null } })
         break;
     }

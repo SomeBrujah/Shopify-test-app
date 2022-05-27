@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser";
 import { Shopify, ApiVersion } from "@shopify/shopify-api";
 import "dotenv/config";
 import axios from "axios";
-import mongoose from "mongoose";
 
 import { ActiveShopModel } from "./mongoModels/activShop.js";
 import applyAuthMiddleware from "./middleware/auth.js";
@@ -18,6 +17,7 @@ const TOP_LEVEL_OAUTH_COOKIE = "shopify_top_level_oauth";
 const PORT = parseInt(process.env.PORT || "8081", 10);
 const isTest = process.env.NODE_ENV === "test" || !!process.env.VITE_TEST_BUILD;
 import MongoStore from "./mongoDBStorage.js";
+import RedisStore from "./redisStorage.js";
 const sessionStorageMongo = new MongoStore();
 
 
